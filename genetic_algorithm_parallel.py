@@ -4,72 +4,224 @@ import numpy as np
 import random
 from sklearn.preprocessing import MinMaxScaler
 from deap import base, creator, tools
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import roc_auc_score, f1_score, precision_score, recall_score
 from sklearn.model_selection import StratifiedKFold
 from skrebate import ReliefF
+from sklearn.svm import SVC
 from multiprocessing import Pool
+from sklearn.model_selection import train_test_split
+from sklearn.neural_network import MLPClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.ensemble import AdaBoostClassifier
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import VotingClassifier
 import time
 
 
 # Fitness function using ReliefF for feature selection
 # Modify the evaluate function to accept a tuple (individual, X_data, X_scaled, y_data)
-def evaluate_parallel(args):
+def evaluate_svm(args):
     individual, X_data, X_scaled, y_data = args
     selected_features = [
         feature for feature, include in zip(X_data.columns, individual) if include
     ]
 
-    # Instantiate and fit ReliefF feature selector
-    relief_selector = ReliefF(n_features_to_select=len(selected_features))
-    relief_selector.fit(X_scaled[selected_features].values, y_data.values)
-
-    # Calculate ReliefF score (sum of feature importance scores)
-    relief_score = (np.sum(relief_selector.feature_importances_)) / len(
-        selected_features
+    x_train, x_test, y_train, y_test = train_test_split(
+        X_data, y_data, test_size=0.2, random_state=42
     )
 
-    return (relief_score,)
+    # Create and train an SVM classifier
+    svm = SVC(probability=True)
+    svm.fit(x_train, y_train)
+
+    # Predict probabilities for the test set
+    y_probs = svm.predict_proba(x_test)[
+        :, 1
+    ]  # Use the probability for the positive class
+
+    # Evaluate the performance using AUC
+    auc_score = roc_auc_score(y_test, y_probs)
+
+    return (auc_score,)
 
 
-def customRand(type, number):
-    # Check if there's a 'last_position.txt' file to resume from
-    try:
-        with open("last_position" + number + ".txt", "r") as last_position_file:
-            last_position = int(last_position_file.read())
-    except FileNotFoundError:
-        last_position = 0  # Start from the beginning if no last position is saved
+def evaluate_rf(args):
+    individual, X_data, X_scaled, y_data = args
+    selected_features = [
+        feature for feature, include in zip(X_data.columns, individual) if include
+    ]
 
-    # Read numbers from the text file starting from the last position
-    with open("new_random_numbers" + number + ".txt", "r") as file:
-        numbers = [int(line) for line in file.readlines()]
+    x_train, x_test, y_train, y_test = train_test_split(
+        X_data, y_data, test_size=0.2, random_state=42
+    )
 
-    # Normalize the numbers to the range [0, 1]
-    normalized_numbers = [number / 4294967295 for number in numbers]
+    # Create and train an SVM classifier
+    rf = RandomForestClassifier(n_estimators=100, random_state=42)
+    rf.fit(x_train, y_train)
 
-    # Determine the number of elements remaining to be read
-    num_elements = len(normalized_numbers)
-    remaining_elements = num_elements - last_position
+    # Predict probabilities for the test set
+    y_probs = rf.predict_proba(x_test)[
+        :, 1
+    ]  # Use the probability for the positive class
 
-    if remaining_elements == 0:
-        raise ValueError("No remaining elements in the file.")
+    # Evaluate the performance using AUC
+    auc_score = roc_auc_score(y_test, y_probs)
 
-    # Get the corresponding normalized number
-    random_number = normalized_numbers[last_position]
+    return (auc_score,)
 
-    # Update the last position
-    last_position = last_position + 1
 
-    # Save the new last position to 'last_position.txt'
-    with open("last_position" + number + ".txt", "w") as last_position_file:
-        last_position_file.write(str(last_position))
+def evaluate_ann(args):
+    individual, X_data, X_scaled, y_data = args
+    selected_features = [
+        feature for feature, include in zip(X_data.columns, individual) if include
+    ]
 
-    if type == "individual":
-        # Return 0 or 1 based on the generated number
-        return 0 if random_number < 0.5 else 1
-    else:
-        return random_number
+    x_train, x_test, y_train, y_test = train_test_split(
+        X_data, y_data, test_size=0.2, random_state=42
+    )
+
+    # Create and train an SVM classifier
+    mlp = MLPClassifier(
+        hidden_layer_sizes=(84, 84),
+        activation="relu",
+        max_iter=100,
+        random_state=42,
+        solver="adam",
+    )
+    mlp.out_activation_ = "softmax"
+
+    mlp.fit(x_train, y_train)
+
+    # Predict probabilities for the test set
+    y_probs = mlp.predict_proba(x_test)[
+        :, 1
+    ]  # Use the probability for the positive class
+
+    # Evaluate the performance using AUC
+    auc_score = roc_auc_score(y_test, y_probs)
+
+    return (auc_score,)
+
+
+def evaluate_nv(args):
+    individual, X_data, X_scaled, y_data = args
+    selected_features = [
+        feature for feature, include in zip(X_data.columns, individual) if include
+    ]
+
+    x_train, x_test, y_train, y_test = train_test_split(
+        X_data, y_data, test_size=0.2, random_state=42
+    )
+
+    # Create and train an SVM classifier
+    nv = GaussianNB()
+    nv.fit(x_train, y_train)
+
+    # Predict probabilities for the test set
+    y_probs = nv.predict_proba(x_test)[
+        :, 1
+    ]  # Use the probability for the positive class
+
+    # Evaluate the performance using AUC
+    auc_score = roc_auc_score(y_test, y_probs)
+
+    return (auc_score,)
+
+
+def evaluate_knn(args):
+    individual, X_data, X_scaled, y_data = args
+    selected_features = [
+        feature for feature, include in zip(X_data.columns, individual) if include
+    ]
+
+    x_train, x_test, y_train, y_test = train_test_split(
+        X_data, y_data, test_size=0.2, random_state=42
+    )
+
+    # Create and train an SVM classifier
+    knn = KNeighborsClassifier(n_neighbors=5)
+    knn.fit(x_train, y_train)
+
+    # Predict probabilities for the test set
+    y_probs = knn.predict_proba(x_test)[
+        :, 1
+    ]  # Use the probability for the positive class
+
+    # Evaluate the performance using AUC
+    auc_score = roc_auc_score(y_test, y_probs)
+
+    return (auc_score,)
+
+
+def evaluate_ada(args):
+    individual, X_data, X_scaled, y_data = args
+    selected_features = [
+        feature for feature, include in zip(X_data.columns, individual) if include
+    ]
+
+    x_train, x_test, y_train, y_test = train_test_split(
+        X_data, y_data, test_size=0.2, random_state=42
+    )
+
+    base_classifier = DecisionTreeClassifier(max_depth=1)
+
+    # Create AdaBoost classifier
+    adaboost_classifier = AdaBoostClassifier(
+        base_classifier, n_estimators=50, random_state=42
+    )
+
+    # Train the AdaBoost classifier
+    adaboost_classifier.fit(x_train, y_train)
+
+    # Make predictions on the test set
+    y_probs = adaboost_classifier.predict_proba(x_test)[
+        :, 1
+    ]  # Use the probability for the positive class
+
+    # Evaluate the performance using AUC
+    auc_score = roc_auc_score(y_test, y_probs)
+
+    return (auc_score,)
+
+
+def evaluate_ensemble(args):
+    individual, X_data, X_scaled, y_data = args
+    selected_features = [
+        feature for feature, include in zip(X_data.columns, individual) if include
+    ]
+
+    x_train, x_test, y_train, y_test = train_test_split(
+        X_data, y_data, test_size=0.2, random_state=42
+    )
+
+    # Define base classifiers
+    clf1 = RandomForestClassifier(random_state=42)
+    clf2 = GradientBoostingClassifier(random_state=42)
+    clf3 = SVC(probability=True, random_state=42)
+    clf4 = LogisticRegression(random_state=42)
+
+    # Create an ensemble classifier
+    ensemble_clf = VotingClassifier(
+        estimators=[("rf", clf1), ("gb", clf2), ("svc", clf3), ("lr", clf4)],
+        voting="hard",
+    )
+
+    # Fit the ensemble classifier on the training data
+    ensemble_clf.fit(x_train, y_train)
+
+    # Make probability predictions on the test data
+    y_probs = ensemble_clf.predict_proba(x_test)[
+        :, 1
+    ]  # Use the probability for the positive class
+
+    # Evaluate the performance using AUC
+    auc_score = roc_auc_score(y_test, y_probs)
+
+    return (auc_score,)
 
 
 if __name__ == "__main__":
@@ -86,6 +238,8 @@ if __name__ == "__main__":
     # Load data
     with open("SeisBenchV1_v1_1.json", "r") as json_file:
         data = pd.read_json(json_file)
+
+    data = data[~data["Type"].isin(["REGIONAL", "HB", "ICEQUAKE"])]
 
     output_file = open("results/" + output_file_name, "w")
 
@@ -109,10 +263,7 @@ if __name__ == "__main__":
     toolbox = base.Toolbox()
 
     # Create a random bit generator
-    if type == "quantum":
-        toolbox.register("attr_bool", customRand, "individual", number)
-    else:
-        toolbox.register("attr_bool", random.randint, 0, 1)
+    toolbox.register("attr_bool", random.randint, 0, 1)
 
     # Initialize a population
     toolbox.register(
@@ -127,22 +278,36 @@ if __name__ == "__main__":
     toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 
     # Register the evaluation operator
-    toolbox.register("evaluate", evaluate_parallel)
+    if type == "svm":
+        toolbox.register("evaluate", evaluate_svm)
+    elif type == "rf":
+        toolbox.register("evaluate", evaluate_rf)
+    elif type == "ann":
+        toolbox.register("evaluate", evaluate_ann)
+    elif type == "nv":
+        toolbox.register("evaluate", evaluate_nv)
+    elif type == "ada":
+        toolbox.register("evaluate", evaluate_ada)
+    elif type == "ensemble":
+        toolbox.register("evaluate", evaluate_ensemble)
+    else:
+        toolbox.register("evaluate", evaluate_knn)
 
     # Register the crossover operator
     toolbox.register("mate", tools.cxTwoPoint)
 
     # Register a mutation operator
-    toolbox.register("mutate", tools.mutFlipBit, indpb=0.02)
+    toolbox.register("mutate", tools.mutFlipBit, indpb=0.05)
 
     # Register the selection operator
-    toolbox.register("select", tools.selTournament, tournsize=3)
+    # toolbox.register("select", tools.selTournament, tournsize=3)
+    toolbox.register("select", tools.selRoulette)
 
     # Create an initial population of 100 individuals
     population = toolbox.population(n=100)
 
     # Define probabilities of crossing and mutating
-    probab_crossing, probab_mutating = 0.3, 0.4
+    probab_crossing, probab_mutating = 0.4, 0.6
 
     num_processes = 100  # Adjust this based on your system's capabilities
     pool = Pool(processes=num_processes)
@@ -180,10 +345,7 @@ if __name__ == "__main__":
         # Apply crossover and mutation on the offspring
         for child1, child2 in zip(offspring[::2], offspring[1::2]):
             # Cross two individuals
-            if type == "quantum":
-                random_cross = customRand("normal", number)
-            else:
-                random_cross = random.random()
+            random_cross = random.random()
 
             if random_cross < probab_crossing:
                 toolbox.mate(child1, child2)
@@ -194,10 +356,7 @@ if __name__ == "__main__":
 
         # Apply mutation
         for mutant in offspring:
-            if type == "quantum":
-                random_mut = customRand("normal", number)
-            else:
-                random_mut = random.random()
+            random_mut = random.random()
 
             if random_mut < probab_mutating:
                 toolbox.mutate(mutant)
@@ -257,68 +416,6 @@ if __name__ == "__main__":
         if include
     ]
     X_selected = X_scaled[selected_features]
+    output_file.write(f"Selected features:  {selected_features}")
 
-    # Instantiate a random forest classifier
-    rf_clf = RandomForestClassifier(n_estimators=100, random_state=42)
-
-    # Perform stratified k-fold cross-validation
-    stratified_kfold = StratifiedKFold(n_splits=10, shuffle=True, random_state=42)
-
-    # Initialize lists to store evaluation metrics for each fold
-    accuracy_list = []
-    precision_list = []
-    recall_list = []
-    auc_list = []
-    f1_list = []
-
-    for train_index, test_index in stratified_kfold.split(X_selected, y_data):
-        X_train, X_test = X_selected.iloc[train_index], X_selected.iloc[test_index]
-        y_train, y_test = y_data.iloc[train_index], y_data.iloc[test_index]
-
-        # Train the classifier
-        rf_clf.fit(X_train, y_train)
-
-        # Make predictions on the test set
-        y_pred = rf_clf.predict(X_test)
-        y_probs = rf_clf.predict_proba(X_test)
-
-        # Evaluate the model
-        accuracy = accuracy_score(y_test, y_pred)
-        precision = precision_score(y_test, y_pred, average="weighted", zero_division=1)
-        recall = recall_score(y_test, y_pred, average="weighted", zero_division=1)
-        auc = roc_auc_score(y_test, y_probs, multi_class="ovr")
-        f1 = f1_score(y_test, y_pred, average="weighted", zero_division=1)
-
-        # Append metrics to the lists
-        accuracy_list.append(accuracy)
-        precision_list.append(precision)
-        recall_list.append(recall)
-        auc_list.append(auc)
-        f1_list.append(f1)
-
-    # Calculate the mean and standard deviation of the metrics across folds
-    mean_accuracy = np.mean(accuracy_list)
-    std_accuracy = np.std(accuracy_list)
-
-    mean_precision = np.mean(precision_list)
-    std_precision = np.std(precision_list)
-
-    mean_recall = np.mean(recall_list)
-    std_recall = np.std(recall_list)
-
-    mean_auc = np.mean(auc_list)
-    std_auc = np.std(auc_list)
-
-    mean_f1 = np.mean(f1_list)
-    std_f1 = np.std(f1_list)
-
-    # Print the mean and standard deviation of the metrics
-    output_file.write("\n Random Forest Classifier \n")
-    output_file.write(f"Mean Accuracy: {mean_accuracy:.2f} (Std: {std_accuracy:.2f})\n")
-    output_file.write(
-        f"Mean Precision: {mean_precision:.2f} (Std: {std_precision:.2f})\n"
-    )
-    output_file.write(f"Mean Recall: {mean_recall:.2f} (Std: {std_recall:.2f})\n")
-    output_file.write(f"Mean AUC: {mean_auc:.2f} (Std: {std_auc:.2f})\n")
-    output_file.write(f"Mean F1 score: {mean_f1:.2f} (Std: {std_f1:.2f})\n")
-    output_file.close()
+output_file.close()
