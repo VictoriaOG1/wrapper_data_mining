@@ -203,11 +203,18 @@ def evaluate_ensemble(args):
     clf2 = GradientBoostingClassifier(random_state=42)
     clf3 = SVC(probability=True, random_state=42)
     clf4 = LogisticRegression(random_state=42)
+    clf5 = KNeighborsClassifier()
 
     # Create an ensemble classifier
     ensemble_clf = VotingClassifier(
-        estimators=[("rf", clf1), ("gb", clf2), ("svc", clf3), ("lr", clf4)],
-        voting="hard",
+        estimators=[
+            ("rf", clf1),
+            ("gb", clf2),
+            ("svc", clf3),
+            ("lr", clf4),
+            ("knn", clf5),  # Added K-Nearest Neighbors classifier
+        ],
+        voting="soft",
     )
 
     # Fit the ensemble classifier on the training data
@@ -294,20 +301,21 @@ if __name__ == "__main__":
         toolbox.register("evaluate", evaluate_knn)
 
     # Register the crossover operator
+    # toolbox.register("mate", tools.cxTwoPoint)
     toolbox.register("mate", tools.cxTwoPoint)
 
     # Register a mutation operator
-    toolbox.register("mutate", tools.mutFlipBit, indpb=0.05)
+    toolbox.register("mutate", tools.mutFlipBit, indpb=0.5)
 
     # Register the selection operator
-    # toolbox.register("select", tools.selTournament, tournsize=3)
-    toolbox.register("select", tools.selRoulette)
+    toolbox.register("select", tools.selTournament, tournsize=10)
+    # toolbox.register("select", tools.selRoulette)
 
     # Create an initial population of 100 individuals
     population = toolbox.population(n=100)
 
     # Define probabilities of crossing and mutating
-    probab_crossing, probab_mutating = 0.4, 0.6
+    probab_crossing, probab_mutating = 0.4, 0.8
 
     num_processes = 100  # Adjust this based on your system's capabilities
     pool = Pool(processes=num_processes)
