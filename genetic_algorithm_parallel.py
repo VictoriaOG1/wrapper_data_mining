@@ -25,13 +25,13 @@ import time
 # Fitness function using ReliefF for feature selection
 # Modify the evaluate function to accept a tuple (individual, X_data, X_scaled, y_data)
 def evaluate_svm(args):
-    individual, X_data, X_scaled, y_data = args
+    individual, X_scaled, y_data = args
     selected_features = [
         feature for feature, include in zip(X_data.columns, individual) if include
     ]
 
     x_train, x_test, y_train, y_test = train_test_split(
-        X_data, y_data, test_size=0.2, random_state=42
+        X_scaled[selected_features], y_data, test_size=0.2, random_state=42
     )
 
     # Create and train an SVM classifier
@@ -50,13 +50,13 @@ def evaluate_svm(args):
 
 
 def evaluate_rf(args):
-    individual, X_data, X_scaled, y_data = args
+    individual, X_scaled, y_data = args
     selected_features = [
         feature for feature, include in zip(X_data.columns, individual) if include
     ]
 
     x_train, x_test, y_train, y_test = train_test_split(
-        X_data, y_data, test_size=0.2, random_state=42
+        X_scaled[selected_features], y_data, test_size=0.2, random_state=42
     )
 
     # Create and train an SVM classifier
@@ -75,13 +75,13 @@ def evaluate_rf(args):
 
 
 def evaluate_ann(args):
-    individual, X_data, X_scaled, y_data = args
+    individual, X_scaled, y_data = args
     selected_features = [
         feature for feature, include in zip(X_data.columns, individual) if include
     ]
 
     x_train, x_test, y_train, y_test = train_test_split(
-        X_data, y_data, test_size=0.2, random_state=42
+        X_scaled[selected_features], y_data, test_size=0.2, random_state=42
     )
 
     # Create and train an SVM classifier
@@ -92,7 +92,7 @@ def evaluate_ann(args):
         random_state=42,
         solver="adam",
     )
-    mlp.out_activation_ = "softmax"
+    mlp.out_activation_ = "sigmoid"
 
     mlp.fit(x_train, y_train)
 
@@ -108,13 +108,13 @@ def evaluate_ann(args):
 
 
 def evaluate_nv(args):
-    individual, X_data, X_scaled, y_data = args
+    individual, X_scaled, y_data = args
     selected_features = [
         feature for feature, include in zip(X_data.columns, individual) if include
     ]
 
     x_train, x_test, y_train, y_test = train_test_split(
-        X_data, y_data, test_size=0.2, random_state=42
+        X_scaled[selected_features], y_data, test_size=0.2, random_state=42
     )
 
     # Create and train an SVM classifier
@@ -133,13 +133,13 @@ def evaluate_nv(args):
 
 
 def evaluate_knn(args):
-    individual, X_data, X_scaled, y_data = args
+    individual, X_scaled, y_data = args
     selected_features = [
         feature for feature, include in zip(X_data.columns, individual) if include
     ]
 
     x_train, x_test, y_train, y_test = train_test_split(
-        X_data, y_data, test_size=0.2, random_state=42
+        X_scaled[selected_features], y_data, test_size=0.2, random_state=42
     )
 
     # Create and train an SVM classifier
@@ -158,13 +158,13 @@ def evaluate_knn(args):
 
 
 def evaluate_ada(args):
-    individual, X_data, X_scaled, y_data = args
+    individual, X_scaled, y_data = args
     selected_features = [
         feature for feature, include in zip(X_data.columns, individual) if include
     ]
 
     x_train, x_test, y_train, y_test = train_test_split(
-        X_data, y_data, test_size=0.2, random_state=42
+        X_scaled[selected_features], y_data, test_size=0.2, random_state=42
     )
 
     base_classifier = DecisionTreeClassifier(max_depth=1)
@@ -189,13 +189,13 @@ def evaluate_ada(args):
 
 
 def evaluate_ensemble(args):
-    individual, X_data, X_scaled, y_data = args
+    individual, X_scaled, y_data = args
     selected_features = [
         feature for feature, include in zip(X_data.columns, individual) if include
     ]
 
     x_train, x_test, y_train, y_test = train_test_split(
-        X_data, y_data, test_size=0.2, random_state=42
+        X_scaled[selected_features], y_data, test_size=0.2, random_state=42
     )
 
     # Define base classifiers
@@ -212,7 +212,7 @@ def evaluate_ensemble(args):
             ("gb", clf2),
             ("svc", clf3),
             ("lr", clf4),
-            ("knn", clf5),  # Added K-Nearest Neighbors classifier
+            ("knn", clf5),
         ],
         voting="soft",
     )
@@ -305,17 +305,17 @@ if __name__ == "__main__":
     toolbox.register("mate", tools.cxTwoPoint)
 
     # Register a mutation operator
-    toolbox.register("mutate", tools.mutFlipBit, indpb=0.5)
+    toolbox.register("mutate", tools.mutFlipBit, indpb=0.1)
 
     # Register the selection operator
-    toolbox.register("select", tools.selTournament, tournsize=10)
+    toolbox.register("select", tools.selTournament, tournsize=3)
     # toolbox.register("select", tools.selRoulette)
 
     # Create an initial population of 100 individuals
     population = toolbox.population(n=100)
 
     # Define probabilities of crossing and mutating
-    probab_crossing, probab_mutating = 0.4, 0.8
+    probab_crossing, probab_mutating = 0.4, 0.3
 
     num_processes = 100  # Adjust this based on your system's capabilities
     pool = Pool(processes=num_processes)
@@ -324,18 +324,12 @@ if __name__ == "__main__":
 
     # Evaluate the entire population in parallel
     fitnesses = list(
-        pool.map(
-            toolbox.evaluate, [(ind, X_data, X_scaled, y_data) for ind in population]
-        )
+        pool.map(toolbox.evaluate, [(ind, X_scaled, y_data) for ind in population])
     )
 
     # Set the fitness values of the population
     for ind, fit in zip(population, fitnesses):
         ind.fitness.values = fit
-
-    # Close the pool of workers
-    # pool.close()
-    # pool.join()
 
     # Record the start time
     start_time = time.time()
@@ -375,7 +369,7 @@ if __name__ == "__main__":
         fitnesses = list(
             pool.map(
                 toolbox.evaluate,
-                [(ind, X_data, X_scaled, y_data) for ind in invalid_individuals],
+                [(ind, X_scaled, y_data) for ind in invalid_individuals],
             )
         )
 
