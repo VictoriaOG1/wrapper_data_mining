@@ -5,7 +5,7 @@ import multiprocessing
 def run_script_with_argument(argument1, argument2, argument3):
     subprocess.run(
         [
-            "python3",
+            "python",
             "genetic_algorithm_parallel.py",
             argument1,
             argument2,

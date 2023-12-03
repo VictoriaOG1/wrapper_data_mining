@@ -25,9 +25,9 @@ import time
 # Fitness function using ReliefF for feature selection
 # Modify the evaluate function to accept a tuple (individual, X_data, X_scaled, y_data)
 def evaluate_svm(args):
-    individual, X_scaled, y_data = args
+    individual, X_data, X_scaled, y_data = args
     selected_features = [
-        feature for feature, include in zip(X_data.columns, individual) if include
+        feature for feature, include in zip(X_scaled.columns, individual) if include
     ]
 
     x_train, x_test, y_train, y_test = train_test_split(
@@ -50,9 +50,9 @@ def evaluate_svm(args):
 
 
 def evaluate_rf(args):
-    individual, X_scaled, y_data = args
+    individual, X_data, X_scaled, y_data = args
     selected_features = [
-        feature for feature, include in zip(X_data.columns, individual) if include
+        feature for feature, include in zip(X_scaled.columns, individual) if include
     ]
 
     x_train, x_test, y_train, y_test = train_test_split(
@@ -75,9 +75,9 @@ def evaluate_rf(args):
 
 
 def evaluate_ann(args):
-    individual, X_scaled, y_data = args
+    individual, X_data, X_scaled, y_data = args
     selected_features = [
-        feature for feature, include in zip(X_data.columns, individual) if include
+        feature for feature, include in zip(X_scaled.columns, individual) if include
     ]
 
     x_train, x_test, y_train, y_test = train_test_split(
@@ -88,7 +88,7 @@ def evaluate_ann(args):
     mlp = MLPClassifier(
         hidden_layer_sizes=(84, 84),
         activation="relu",
-        max_iter=100,
+        max_iter=1000,
         random_state=42,
         solver="adam",
     )
@@ -108,9 +108,9 @@ def evaluate_ann(args):
 
 
 def evaluate_nv(args):
-    individual, X_scaled, y_data = args
+    individual, X_data, X_scaled, y_data = args
     selected_features = [
-        feature for feature, include in zip(X_data.columns, individual) if include
+        feature for feature, include in zip(X_scaled.columns, individual) if include
     ]
 
     x_train, x_test, y_train, y_test = train_test_split(
@@ -133,9 +133,9 @@ def evaluate_nv(args):
 
 
 def evaluate_knn(args):
-    individual, X_scaled, y_data = args
+    individual, X_data, X_scaled, y_data = args
     selected_features = [
-        feature for feature, include in zip(X_data.columns, individual) if include
+        feature for feature, include in zip(X_scaled.columns, individual) if include
     ]
 
     x_train, x_test, y_train, y_test = train_test_split(
@@ -158,9 +158,9 @@ def evaluate_knn(args):
 
 
 def evaluate_ada(args):
-    individual, X_scaled, y_data = args
+    individual, X_data, X_scaled, y_data = args
     selected_features = [
-        feature for feature, include in zip(X_data.columns, individual) if include
+        feature for feature, include in zip(X_scaled.columns, individual) if include
     ]
 
     x_train, x_test, y_train, y_test = train_test_split(
@@ -189,9 +189,9 @@ def evaluate_ada(args):
 
 
 def evaluate_ensemble(args):
-    individual, X_scaled, y_data = args
+    individual, X_data, X_scaled, y_data = args
     selected_features = [
-        feature for feature, include in zip(X_data.columns, individual) if include
+        feature for feature, include in zip(X_scaled.columns, individual) if include
     ]
 
     x_train, x_test, y_train, y_test = train_test_split(
@@ -248,7 +248,7 @@ if __name__ == "__main__":
 
     data = data[~data["Type"].isin(["REGIONAL", "HB", "ICEQUAKE"])]
 
-    output_file = open("results/" + output_file_name, "w")
+    output_file = open(output_file_name, "w")
 
     # Split data into X and y
     y_data = data.iloc[:, 0]  # Select the first column as 'y'
@@ -317,14 +317,16 @@ if __name__ == "__main__":
     # Define probabilities of crossing and mutating
     probab_crossing, probab_mutating = 0.4, 0.3
 
-    num_processes = 100  # Adjust this based on your system's capabilities
+    num_processes = 8  # Adjust this based on your system's capabilities
     pool = Pool(processes=num_processes)
 
     num_generations = 100
 
     # Evaluate the entire population in parallel
     fitnesses = list(
-        pool.map(toolbox.evaluate, [(ind, X_scaled, y_data) for ind in population])
+        pool.map(
+            toolbox.evaluate, [(ind, X_data, X_scaled, y_data) for ind in population]
+        )
     )
 
     # Set the fitness values of the population
@@ -369,7 +371,7 @@ if __name__ == "__main__":
         fitnesses = list(
             pool.map(
                 toolbox.evaluate,
-                [(ind, X_scaled, y_data) for ind in invalid_individuals],
+                [(ind, X_data, X_scaled, y_data) for ind in invalid_individuals],
             )
         )
 
@@ -420,4 +422,4 @@ if __name__ == "__main__":
     X_selected = X_scaled[selected_features]
     output_file.write(f"Selected features:  {selected_features}")
 
-output_file.close()
+    output_file.close()
