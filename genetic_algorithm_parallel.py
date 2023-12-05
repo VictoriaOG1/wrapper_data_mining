@@ -308,7 +308,7 @@ if __name__ == "__main__":
     toolbox.register("mutate", tools.mutFlipBit, indpb=0.1)
 
     # Register the selection operator
-    toolbox.register("select", tools.selTournament, tournsize=3)
+    toolbox.register("select", tools.selTournament, tournsize=10)
     # toolbox.register("select", tools.selRoulette)
 
     # Create an initial population of 100 individuals
